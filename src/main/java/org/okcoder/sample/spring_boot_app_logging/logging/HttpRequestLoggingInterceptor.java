@@ -4,28 +4,29 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.Part;
+import org.okcoder.sample.spring_boot_app_logging.config.ContentCachedRequestWrapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
-import org.springframework.util.MimeType;
-import org.springframework.util.StringUtils;
+import org.springframework.util.StreamUtils;
+import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.multipart.MultipartResolver;
 import org.springframework.web.servlet.DispatcherServlet;
 import org.springframework.web.servlet.HandlerInterceptor;
 import org.springframework.web.servlet.ModelAndView;
-import org.springframework.web.util.ContentCachingRequestWrapper;
+import org.springframework.web.util.WebUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.Charset;
 import java.util.Collections;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Component
 public class HttpRequestLoggingInterceptor implements HandlerInterceptor {
-    private final Logger logger = LoggerFactory.getLogger(HttpRequestLoggingInterceptor.class);
     private final MultipartResolver multipartResolver;
     private final HttpRequestLoggingProperties properties;
 
@@ -36,54 +37,60 @@ public class HttpRequestLoggingInterceptor implements HandlerInterceptor {
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
-        HttpServletRequest requestToUse = request;
 
-        if (!(request instanceof ContentCachingRequestWrapper)) {
-            requestToUse = new ContentCachingRequestWrapper(request);
-        }
+        HandlerMethod method = (HandlerMethod) handler;
+        final Logger logger = LoggerFactory.getLogger(method.getBeanType().getName() + "." + method.getMethod().getName());
 
-        logHttpHeaders(requestToUse);
+        logHttpHeaders(logger, request);
 
-        if (requestToUse.getContentLength() > 0) {
-            logHttpBody(requestToUse);
-        }
+        logHttpBody(logger, request);
 
         return true;
     }
 
-    private void logHttpBody(HttpServletRequest request) throws ServletException, IOException {
+    private void logHttpBody(Logger logger, HttpServletRequest request) throws ServletException, IOException {
+        if (request.getContentLength() <= 0) {
+            return;
+        }
         if (multipartResolver.isMultipart(request)) {
             for (Part part : request.getParts()) {
-                logPart(part.getContentType(), part.getName(), part.getInputStream(),request.getCharacterEncoding());
+                logPart(logger, part.getContentType(), part.getName(), part.getInputStream(), request.getCharacterEncoding());
             }
         } else {
-            logPart(request.getContentType(), "-", request.getInputStream(),request.getCharacterEncoding());
+            ContentCachedRequestWrapper wrapper = WebUtils.getNativeRequest(request, ContentCachedRequestWrapper.class);
+            logger.info("{},{}", wrapper.getContentType(), new String(wrapper.getCachedContent(), Charset.forName(wrapper.getCharacterEncoding())));
         }
     }
 
-    private void logPart(String contentType, String name, InputStream inputStream, String characterEncoding) {
-        //MimeType.valueOf(contentType).includes()
-        if (Objects.equals(MediaType.valueOf(contentType).getType(),MediaType.IMAGE_JPEG.getType())){
-
-        }else{
-
+    private void logPart(Logger logger, String contentType, String name, InputStream inputStream, String characterEncoding) throws IOException {
+        if (Objects.equals(MediaType.valueOf(contentType).getType(), MediaType.IMAGE_JPEG.getType())) {
+            logger.info("{},{},{}", name, contentType, StreamUtils.copyToByteArray(inputStream));
+        } else {
+            logger.info("{},{},{}", name, contentType, StreamUtils.copyToString(inputStream, Charset.forName(characterEncoding)));
         }
     }
 
-    private void logHttpHeaders(HttpServletRequest request) {
-        final var headers = Collections.list(request.getHeaderNames()).stream()
+    private void logHttpHeaders(Logger logger, HttpServletRequest request) {
+        final var headers = Collections.list(request.getHeaderNames())
+                .stream()
                 .filter(name -> !properties.getExcludes().contains(name))
-                .collect(Collectors.toMap(name -> name, name -> Collections.list(request.getHeaders(name))));
+                .collect(Collectors.toMap(name -> name, name -> getHeaderValue(request,name)));
         logger.info("logHttpHeaders {}", headers);
+    }
+
+    private String getHeaderValue(HttpServletRequest request, String name){
+        return Collections.list(request.getHeaders(name))
+                .stream()
+                .collect(Collectors.joining(","));
     }
 
     @Override
     public void postHandle(HttpServletRequest request, HttpServletResponse response, Object handler, ModelAndView modelAndView) throws Exception {
-        HandlerInterceptor.super.postHandle(request, response, handler, modelAndView);
+
     }
 
     @Override
     public void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) throws Exception {
-        HandlerInterceptor.super.afterCompletion(request, response, handler, ex);
+
     }
 }
