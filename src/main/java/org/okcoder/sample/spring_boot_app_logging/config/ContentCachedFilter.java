@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.web.multipart.MultipartResolver;
 import org.springframework.web.servlet.DispatcherServlet;
+import org.springframework.web.util.ContentCachingResponseWrapper;
 import org.springframework.web.util.WebUtils;
 
 import java.io.IOException;
@@ -35,10 +36,17 @@ public class ContentCachedFilter extends OncePerRequestFilter {
             return;
         }
 
-        ContentCachedRequestWrapper wrapper = WebUtils.getNativeRequest(request, ContentCachedRequestWrapper.class);
-        if (wrapper == null) {
-            wrapper = new ContentCachedRequestWrapper(request);
+        ContentCachedRequestWrapper requestWrapper = WebUtils.getNativeRequest(request, ContentCachedRequestWrapper.class);
+        if (requestWrapper == null) {
+            requestWrapper = new ContentCachedRequestWrapper(request);
         }
-        filterChain.doFilter(wrapper, response);
+
+        ContentCachingResponseWrapper responseWrapper = WebUtils.getNativeResponse(response,ContentCachingResponseWrapper.class);
+        if (responseWrapper == null) {
+            responseWrapper = new ContentCachingResponseWrapper(response);
+        }
+        filterChain.doFilter(requestWrapper, responseWrapper);
+
+        responseWrapper.copyBodyToResponse();
     }
 }
