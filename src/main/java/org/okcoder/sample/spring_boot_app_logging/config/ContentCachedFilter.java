@@ -41,7 +41,7 @@ public class ContentCachedFilter extends OncePerRequestFilter {
             requestWrapper = new ContentCachedRequestWrapper(request);
         }
 
-        ContentCachingResponseWrapper responseWrapper = WebUtils.getNativeResponse(response,ContentCachingResponseWrapper.class);
+        ContentCachingResponseWrapper responseWrapper = WebUtils.getNativeResponse(response, ContentCachingResponseWrapper.class);
         if (responseWrapper == null) {
             responseWrapper = new ContentCachingResponseWrapper(response);
         }

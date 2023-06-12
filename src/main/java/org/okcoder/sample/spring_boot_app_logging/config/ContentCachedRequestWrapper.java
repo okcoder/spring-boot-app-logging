@@ -7,10 +7,14 @@ import jakarta.servlet.http.HttpServletRequestWrapper;
 import org.springframework.util.StreamUtils;
 import org.springframework.web.util.WebUtils;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
 
 /**
- * @refs https://qiita.com/kazuki43zoo/items/757b557c05f548c6c5db
+ * @see <a href="https://qiita.com/kazuki43zoo/items/757b557c05f548c6c5db">Spring MVC(+Spring Boot)上でのリクエスト共通処理の実装方法を理解する</a>
+ * @see <a href="https://qiita.com/asachan/items/2e3b64b0fcb9d2dabe7c">Spring Boot + Spring SecurityでRequestのBodyを複数回読み取る方法</a>
  * @see org.springframework.web.util.ContentCachingRequestWrapper
  */
 public class ContentCachedRequestWrapper extends HttpServletRequestWrapper {
@@ -31,7 +35,7 @@ public class ContentCachedRequestWrapper extends HttpServletRequestWrapper {
     }
 
     @Override
-    public BufferedReader getReader() throws IOException {
+    public BufferedReader getReader() {
         if (reader == null) {
             reader = new BufferedReader(new InputStreamReader(this.getInputStream()));
         }
@@ -39,7 +43,7 @@ public class ContentCachedRequestWrapper extends HttpServletRequestWrapper {
     }
 
     @Override
-    public ServletInputStream getInputStream() throws IOException {
+    public ServletInputStream getInputStream() {
         if (inputStream == null) {
             inputStream = new BufferedServletInputStream(new ByteArrayInputStream(this.cache));
         }
@@ -56,7 +60,7 @@ public class ContentCachedRequestWrapper extends HttpServletRequestWrapper {
         return this.cache;
     }
 
-    private class BufferedServletInputStream extends ServletInputStream {
+    private static class BufferedServletInputStream extends ServletInputStream {
         private final ByteArrayInputStream byteArrayInputStream;
 
         public BufferedServletInputStream(ByteArrayInputStream byteArrayInputStream) {
@@ -79,7 +83,7 @@ public class ContentCachedRequestWrapper extends HttpServletRequestWrapper {
         }
 
         @Override
-        public int read() throws IOException {
+        public int read() {
             return this.byteArrayInputStream.read();
         }
 
@@ -89,7 +93,7 @@ public class ContentCachedRequestWrapper extends HttpServletRequestWrapper {
         }
 
         @Override
-        public int read(byte[] b, int off, int len) throws IOException {
+        public int read(byte[] b, int off, int len) {
             return byteArrayInputStream.read(b, off, len);
         }
     }

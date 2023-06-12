@@ -27,7 +27,7 @@ public class HttpLoggingProperties {
     public void setResponse(HeaderProperties response) {
         this.response = response;
     }
-
+ 
     static class HeaderProperties {
         public Set<String> excludes = new HashSet<>();
 

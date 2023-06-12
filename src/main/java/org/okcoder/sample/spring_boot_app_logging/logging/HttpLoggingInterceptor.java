@@ -36,10 +36,11 @@ public class HttpLoggingInterceptor implements HandlerInterceptor {
         this.properties = properties;
     }
 
-    private Logger getLogger(Object handler){
+    private Logger getLogger(Object handler) {
         HandlerMethod method = (HandlerMethod) handler;
         return LoggerFactory.getLogger(method.getBeanType().getName() + "." + method.getMethod().getName());
     }
+
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
 
@@ -77,11 +78,11 @@ public class HttpLoggingInterceptor implements HandlerInterceptor {
         final var headers = Collections.list(request.getHeaderNames())
                 .stream()
                 .filter(name -> !properties.getRequest().getExcludes().contains(name))
-                .collect(Collectors.toMap(name -> name, name -> getHeaderValue(request,name)));
+                .collect(Collectors.toMap(name -> name, name -> getHeaderValue(request, name)));
         logger.info("RequestHeaders {}", headers);
     }
 
-    private String getHeaderValue(HttpServletRequest request, String name){
+    private String getHeaderValue(HttpServletRequest request, String name) {
         return String.join(",", Collections.list(request.getHeaders(name)));
     }
 
@@ -90,7 +91,7 @@ public class HttpLoggingInterceptor implements HandlerInterceptor {
 
         final Logger logger = getLogger(handler);
 
-        logResponseHeaders(logger,response);
+        logResponseHeaders(logger, response);
         logResponseBody(logger, response);
 
     }
@@ -99,9 +100,10 @@ public class HttpLoggingInterceptor implements HandlerInterceptor {
         final var headers = response.getHeaderNames()
                 .stream()
                 .filter(name -> !properties.getRequest().getExcludes().contains(name))
-                .collect(Collectors.toMap(name -> name, name -> String.join(",",response.getHeaders(name))));
+                .collect(Collectors.toMap(name -> name, name -> String.join(",", response.getHeaders(name))));
         logger.info("ResponseHeaders {}", headers);
     }
+
     private void logResponseBody(Logger logger, HttpServletResponse response) {
         ContentCachingResponseWrapper wrapper = WebUtils.getNativeResponse(response, ContentCachingResponseWrapper.class);
         logger.info("ResponseBody:{},{}", wrapper.getContentType(), new String(wrapper.getContentAsByteArray(), Charset.forName(wrapper.getCharacterEncoding())));
